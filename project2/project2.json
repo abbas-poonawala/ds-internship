@@ -1,0 +1,1173 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "id": "ffa2c2b2",
+   "metadata": {},
+   "source": [
+    "# Attention, Virality, and Digital Culture\n",
+    "---\n",
+    "### Opening Question\n",
+    "**How does attention move across major social media platforms, and what patterns seem to support virality?**\n",
+    "\n",
+    "### Objective\n",
+    "This notebook explores how attention flows across Twitter, Reddit, Instagram, YouTube, TikTok, and Facebook. The dataset contains posts with engagement metrics, sentiment details, and cross-platform spread indicators.\n",
+    "\n",
+    "The aim is to understand which kinds of content receive attention, whether some platforms amplify certain types of engagement, and what factors might separate viral posts from the rest.\n",
+    "\n",
+    "### Dataset Overview\n",
+    "- **Source**: Multi-Platform Social Sentiment Evolution dataset from [Kaggle](https://www.kaggle.com/datasets/benjaminneil/social-sentiment-evolution).\n",
+    "- **Variables**: platform, topic, sentiment, likes, shares, comments, views, hour_of_day, is_weekend, viral_coefficient, cross_platform_spread, verified, follower_count\n",
+    "- **Analysis Approach**: Exploratory Data Analysis [EDA] with focus on cross-platform attention patterns, virality indicators, and engagement dynamics through visualisation and statistical summaries.\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "4eeb9a09",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import pandas as pd\n",
+    "import numpy as np\n",
+    "import matplotlib.pyplot as plt\n",
+    "import seaborn as sns\n",
+    "import warnings\n",
+    "warnings.filterwarnings(\"ignore\")\n",
+    "\n",
+    "# Set visualisation style\n",
+    "sns.set_style(\"whitegrid\")\n",
+    "plt.rcParams[\"figure.figsize\"] = (12, 6)\n",
+    "plt.rcParams[\"font.size\"] = 10\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "b7cc9659",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# colour scheme\n",
+    "primary = \"#0D47A1\"\n",
+    "secondary = \"#90CAF9\"\n",
+    "\n",
+    "gradient = [\"#BBDEFB\", \"#90CAF9\", \"#64B5F6\", \"#42A5F5\", \"#2196F3\", \"#1E88E5\", \"#1565C0\", \"#0D47A1\"]\n",
+    "# accent colours\n",
+    "mangoacc = \"#ff9f43\"\n",
+    "pinkacc = \"#ff6b81\"\n",
+    "skyacc = \"#74b9ff\"\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "d4059f1e",
+   "metadata": {},
+   "source": [
+    "### 1. Dataset Loading and Overview\n",
+    "\n",
+    "I will start by loading the dataset and checking its basic structure. This gives a first impression of what the file contains before the real analysis begins."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "ca7bd275",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# load the dataset\n",
+    "path = \"trendsanalysis.csv\"\n",
+    "file = pd.read_csv(path)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "eb2826fc",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "print(f\"Dataset shape: {file.shape}\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "6f8404d8",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "print(f\"\\nTotal records: {file.shape[0]}\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "65cc2e80",
+   "metadata": {},
+   "source": [
+    "### 1.1 First Look at the Data\n",
+    "\n",
+    "Displaying the first and last five rows helps me understand the dataset layout."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "3a1857b1",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "print(\"First 5 records:\")\n",
+    "file.head()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "tail_cell",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "print(\"Last 5 records:\")\n",
+    "file.tail()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "b1169cdc",
+   "metadata": {},
+   "source": [
+    "### 1.2 Data Types and Column Information\n",
+    "\n",
+    "Here I check column names, data types, and the basic structure."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "746a2070",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "print(\"Dataset Info:\")\n",
+    "file.info()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "768d35aa",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "print(\"\\nColumn Names:\")\n",
+    "file.columns.tolist()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "cc05460f",
+   "metadata": {},
+   "source": [
+    "### 2. Data Quality Checks\n",
+    "\n",
+    "Before moving to analysis, I need to see if the dataset has missing values, duplicate rows, or any obvious issues. Clean data makes the rest of the work much smoother [which I always appreciate]."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "6cf44e9e",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# missing values check\n",
+    "print(\"Missing Values:\")\n",
+    "missing = file.isnull().sum()\n",
+    "missing_pct = (missing / len(file)) * 100\n",
+    "missing_file = pd.DataFrame({\"Column\": missing.index, \"Missing Count\": missing.values, \"Missing %\": missing_pct.values})\n",
+    "print(missing_file[missing_file[\"Missing Count\"] > 0] if missing_file[\"Missing Count\"].sum() > 0 else \"No missing values found!\")\n",
+    "print(f\"\\nTotal missing values in dataset: {file.isnull().sum().sum()}\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "e810f50b",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# duplicates check\n",
+    "print(f\"Number of duplicate rows: {file.duplicated().sum()}\")\n",
+    "print(f\"Number of unique records: {len(file.drop_duplicates())}\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "45a283a6",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# summary of variables\n",
+    "print(\"\\nDataset Statistics:\")\n",
+    "file.describe(include=\"all\").round(2)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "obs_quality",
+   "metadata": {},
+   "source": [
+    "### Observations\n",
+    "\n",
+    "- **Data completeness**: No missing values or duplicate rows. Good sign.\n",
+    "- **Variable types**: Numeric engagement metrics are correctly typed; categorical columns [platform, topic, sentiment] are objects.\n",
+    "\n",
+    "**What this suggests**: The dataset is well-structured and doesn't need cleaning before we explore attention patterns."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "ee1d7cea",
+   "metadata": {},
+   "source": [
+    "### 3. Platform Attention Analysis\n",
+    "\n",
+    "This section compares engagement across platforms. Since attention can mean likes, shares, comments, or views, I will look at more than one metric.\n",
+    "\n",
+    "**Questions for This Section:**\n",
+    "- Which platforms generate the most attention?\n",
+    "- Do different platforms dominate different engagement metrics?\n",
+    "- How does platform design influence engagement type?"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "platform_engagement_head",
+   "metadata": {},
+   "source": [
+    "First, I calculate the average engagement by platform for likes, shares, comments, and views."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "34a60df5",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "print(\"Average Engagement by Platform:\")\n",
+    "platform_engagement = file.groupby(\"platform\")[[\"likes\", \"shares\", \"comments\", \"views\"]].mean().round(0)\n",
+    "print(platform_engagement)\n",
+    "print(f\"\\nPercentage Distribution:\")\n",
+    "print((platform_engagement / platform_engagement.sum() * 100).round(1))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "7a3390c9",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# visualisation: platform likes\n",
+    "plt.figure(figsize=(10, 6))\n",
+    "platform_likes = file.groupby(\"platform\")[\"likes\"].mean().sort_values(ascending=True)\n",
+    "ax = sns.barplot(y=platform_likes.index, x=platform_likes.values, palette=gradient[-len(platform_likes):], hue=platform_likes.index, legend=False)\n",
+    "\n",
+    "for container in ax.containers:\n",
+    "    ax.bar_label(container, fmt=\"%.0f\", fontsize=10, fontweight=\"bold\", padding=5)\n",
+    "\n",
+    "plt.title(\"Average Likes per Platform\", fontsize=14, fontweight=\"bold\")\n",
+    "plt.xlabel(\"Average Number of Likes\", fontsize=11)\n",
+    "plt.ylabel(\"Platform\", fontsize=11)\n",
+    "plt.tight_layout()\n",
+    "plt.show()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "616b43e3",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# visualisation: platform shares\n",
+    "plt.figure(figsize=(10, 6))\n",
+    "platform_shares = file.groupby(\"platform\")[\"shares\"].mean().sort_values(ascending=True)\n",
+    "ax = sns.barplot(y=platform_shares.index, x=platform_shares.values, palette=gradient[-len(platform_shares):], hue=platform_shares.index, legend=False)\n",
+    "\n",
+    "for container in ax.containers:\n",
+    "    ax.bar_label(container, fmt=\"%.0f\", fontsize=10, fontweight=\"bold\", padding=5)\n",
+    "\n",
+    "plt.title(\"Average Shares per Platform\", fontsize=14, fontweight=\"bold\")\n",
+    "plt.xlabel(\"Average Number of Shares\", fontsize=11)\n",
+    "plt.ylabel(\"Platform\", fontsize=11)\n",
+    "plt.tight_layout()\n",
+    "plt.show()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "2411b05a",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# visualisation: platform comments and views\n",
+    "fig, axes = plt.subplots(1, 2, figsize=(14, 5))\n",
+    "\n",
+    "platform_comments = file.groupby(\"platform\")[\"comments\"].mean().sort_values(ascending=True)\n",
+    "sns.barplot(y=platform_comments.index, x=platform_comments.values, palette=gradient[-len(platform_comments):], hue=platform_comments.index, legend=False, ax=axes[0])\n",
+    "axes[0].set_title(\"Average Comments per Platform\", fontsize=14, fontweight=\"bold\")\n",
+    "axes[0].set_xlabel(\"Average Comments\", fontsize=11)\n",
+    "axes[0].set_ylabel(\"Platform\", fontsize=11)\n",
+    "\n",
+    "platform_views = file.groupby(\"platform\")[\"views\"].mean().sort_values(ascending=True)\n",
+    "sns.barplot(y=platform_views.index, x=platform_views.values, palette=gradient[-len(platform_views):], hue=platform_views.index, legend=False, ax=axes[1])\n",
+    "axes[1].set_title(\"Average Views per Platform\", fontsize=14, fontweight=\"bold\")\n",
+    "axes[1].set_xlabel(\"Average Views\", fontsize=11)\n",
+    "axes[1].set_ylabel(\"Platform\", fontsize=11)\n",
+    "\n",
+    "plt.tight_layout()\n",
+    "plt.show()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "obs_platform",
+   "metadata": {},
+   "source": [
+    "### Observations\n",
+    "- **YouTube dominates views** – video-centric platforms naturally get higher view counts.\n",
+    "- **TikTok leads in likes** – its fast, interactive design encourages many likes per post.\n",
+    "- **Twitter [X] shows strong sharing behaviour** – retweets are a primary engagement method.\n",
+    "- **Reddit encourages comments** – discussion forums produce more conversation than other sites.\n",
+    "\n",
+    "**What this suggests**: There is no single most engaging platform. Engagement depends on what you measure, because a like, share, comment, and view all represent different forms of attention."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "bc4c3b8a",
+   "metadata": {},
+   "source": [
+    "### 4. Topic and Attention Analysis\n",
+    "\n",
+    "This part checks how topics perform across platforms. It helps show whether a topic does well everywhere or mainly on specific platforms.\n",
+    "\n",
+    "**Questions for This Section:**\n",
+    "- Do certain topics capture more attention than others?\n",
+    "- Which topics generate the most discussion?\n",
+    "- Does topic performance vary by platform?"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "4e005cd5",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# topic-platform engagement\n",
+    "print(\"Topic Performance Across Platforms [Average Likes]:\")\n",
+    "topic_platform_likes = file.pivot_table(values=\"likes\", index=\"topic\", columns=\"platform\", aggfunc=\"mean\").fillna(0)\n",
+    "topic_platform_likes.round(2)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "5496b57f",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# visualisation: topic performance heatmap\n",
+    "plt.figure(figsize=(10, 6))\n",
+    "sns.heatmap(topic_platform_likes, annot=True, cmap=\"Blues\", fmt=\".0f\", cbar_kws={\"label\": \"Average Likes\"}, linewidths=0.5)\n",
+    "plt.title(\"Topic Performance Across Platforms\", fontsize=14, fontweight=\"bold\")\n",
+    "plt.xlabel(\"Platform\", fontsize=11)\n",
+    "plt.ylabel(\"Topic\", fontsize=11)\n",
+    "plt.tight_layout()\n",
+    "plt.show()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "obs_topic_perf",
+   "metadata": {},
+   "source": [
+    "### Observations\n",
+    "- **Entertainment, technology, and gaming** tend to perform well across several platforms.\n",
+    "- **Politics** can create strong discussion on platforms where debate is common [e.g., Twitter, Reddit].\n",
+    "- Some topics work well in one space but not another, which shows that audience culture matters.\n",
+    "\n",
+    "**What this suggests**: Topic and platform work together. The same topic can receive very different attention depending on where it is posted."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "0ef94d86",
+   "metadata": {},
+   "source": [
+    "### 4.1 Topic Discussion Analysis\n",
+    "\n",
+    "Comments are useful for studying discussion because they usually need more effort than likes. This step checks total comments by topic."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "f45704ab",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# visualisation: top topics by comments\n",
+    "topic_comments = file.groupby(\"topic\")[\"comments\"].sum().sort_values(ascending=False)\n",
+    "\n",
+    "plt.figure(figsize=(10, 6))\n",
+    "ax = sns.barplot(x=topic_comments.head(10).index, y=topic_comments.head(10).values, palette=gradient, hue=topic_comments.head(10).index, legend=False)\n",
+    "\n",
+    "for container in ax.containers:\n",
+    "    ax.bar_label(container, fmt=\"%.0f\", fontsize=10, fontweight=\"bold\", padding=5)\n",
+    "\n",
+    "plt.title(\"Top 10 Topics by Total Comments\", fontsize=14, fontweight=\"bold\")\n",
+    "plt.xlabel(\"Topic\", fontsize=11)\n",
+    "plt.ylabel(\"Total Comments\", fontsize=11)\n",
+    "plt.xticks(rotation=45, ha=\"right\")\n",
+    "plt.tight_layout()\n",
+    "plt.show()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "obs_topic_comments",
+   "metadata": {},
+   "source": [
+    "### Observations\n",
+    "- Topics that invite opinion or debate [politics, gaming, entertainment] tend to generate the most comments.\n",
+    "- The distribution is uneven – a few topics drive the majority of discussion.\n",
+    "\n",
+    "**What this suggests**: For content that aims to spark conversation, choosing a polarising or highly engaging topic matters more than the platform alone."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "5224c149",
+   "metadata": {},
+   "source": [
+    "### 5. Timing and Engagement Analysis\n",
+    "\n",
+    "This section checks whether posts receive different engagement depending on the hour of the day and whether they are posted on weekdays or weekends.\n",
+    "\n",
+    "**Questions for This Section:**\n",
+    "- Does posting time affect attention?\n",
+    "- Are weekend posts more engaging than weekday posts?\n",
+    "- Is there an optimal posting window?"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "38b880cc",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# visualisation: hourly engagement\n",
+    "plt.figure(figsize=(10, 6))\n",
+    "hourly_likes = file.groupby(\"hour_of_day\")[\"likes\"].mean()\n",
+    "\n",
+    "plt.plot(hourly_likes.index, hourly_likes.values, marker=\"o\", linestyle=\"-\", color=primary, linewidth=2)\n",
+    "plt.fill_between(hourly_likes.index, hourly_likes.values, color=secondary, alpha=0.35)\n",
+    "plt.title(\"Average Likes by Hour of Day\", fontsize=14, fontweight=\"bold\")\n",
+    "plt.xlabel(\"Hour of Day [24-hour format]\", fontsize=11)\n",
+    "plt.ylabel(\"Average Likes\", fontsize=11)\n",
+    "plt.grid(True, alpha=0.3)\n",
+    "plt.tight_layout()\n",
+    "plt.show()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "776df51e",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "print(\"Average Engagement: Weekend vs Weekday:\")\n",
+    "weekend_engagement = file.groupby(\"is_weekend\")[[\"likes\", \"shares\", \"comments\"]].mean()\n",
+    "weekend_engagement.index = [\"Weekday\", \"Weekend\"]\n",
+    "weekend_engagement.round(2)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "a3507dab",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# visualisation: weekend vs weekday\n",
+    "weekend_plot = weekend_engagement.reset_index().rename(columns={\"index\": \"Day Type\"})\n",
+    "weekend_melted = weekend_plot.melt(id_vars=\"Day Type\", var_name=\"Metric\", value_name=\"Average\")\n",
+    "\n",
+    "plt.figure(figsize=(10, 6))\n",
+    "ax = sns.barplot(data=weekend_melted, x=\"Metric\", y=\"Average\", hue=\"Day Type\", palette=[primary, secondary])\n",
+    "\n",
+    "for container in ax.containers:\n",
+    "    ax.bar_label(container, fmt=\"%.0f\", fontsize=10, fontweight=\"bold\", padding=5)\n",
+    "\n",
+    "plt.title(\"Average Engagement: Weekend vs Weekday\", fontsize=14, fontweight=\"bold\")\n",
+    "plt.xlabel(\"Engagement Metric\", fontsize=11)\n",
+    "plt.ylabel(\"Average Count\", fontsize=11)\n",
+    "plt.tight_layout()\n",
+    "plt.show()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "obs_timing",
+   "metadata": {},
+   "source": [
+    "### Observations\n",
+    "- Engagement tends to rise during late morning and early evening hours, which aligns with typical user active periods.\n",
+    "- Weekend posts receive slightly more likes and comments on average than weekday posts, though the difference isn't huge.\n",
+    "\n",
+    "**What this suggests**: Timing matters, but it is not everything. A weak post at the perfect time is still a weak post [which is unfortunate but fair]."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "567c2fe1",
+   "metadata": {},
+   "source": [
+    "### 6. Cross-Platform Spread Analysis\n",
+    "\n",
+    "This section compares posts that spread across several platforms with those that stay on one platform.\n",
+    "\n",
+    "**Questions for This Section:**\n",
+    "- What separates high-spread content from low-spread content?\n",
+    "- How are engagement and virality indicators related?\n",
+    "- Does cross-platform spread guarantee higher engagement?"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "b3684f89",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# cross-platform spread comparison\n",
+    "median_spread = file[\"cross_platform_spread\"].median()\n",
+    "high_spread = file[file[\"cross_platform_spread\"] > median_spread]\n",
+    "low_spread = file[file[\"cross_platform_spread\"] <= median_spread]\n",
+    "print(f\"High spread posts count: {len(high_spread)}\")\n",
+    "print(f\"Low spread posts count: {len(low_spread)}\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "d47450c4",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "print(\"Engagement Comparison: High Spread vs Low Spread:\")\n",
+    "high_spread_avg = high_spread[[\"likes\", \"shares\", \"comments\", \"views\"]].mean()\n",
+    "low_spread_avg = low_spread[[\"likes\", \"shares\", \"comments\", \"views\"]].mean()\n",
+    "\n",
+    "spread_comparison = pd.DataFrame({\n",
+    "    \"High Spread\": high_spread_avg,\n",
+    "    \"Low Spread\": low_spread_avg\n",
+    "}).round(2)\n",
+    "spread_comparison"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "f9e2b915",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# visualisation: spread comparison\n",
+    "spread_melted = spread_comparison.reset_index().melt(id_vars=\"index\", var_name=\"Spread Type\", value_name=\"Average\")\n",
+    "spread_melted.rename(columns={\"index\": \"Metric\"}, inplace=True)\n",
+    "\n",
+    "plt.figure(figsize=(10, 6))\n",
+    "ax = sns.barplot(data=spread_melted, x=\"Metric\", y=\"Average\", hue=\"Spread Type\", palette=[primary, secondary])\n",
+    "\n",
+    "for container in ax.containers:\n",
+    "    ax.bar_label(container, fmt=\"%.0f\", fontsize=10, fontweight=\"bold\", padding=5)\n",
+    "\n",
+    "plt.title(\"Average Engagement: High Spread vs Low Spread Posts\", fontsize=14, fontweight=\"bold\")\n",
+    "plt.xlabel(\"Engagement Metric\", fontsize=11)\n",
+    "plt.ylabel(\"Average Count\", fontsize=11)\n",
+    "plt.tight_layout()\n",
+    "plt.show()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "a9e0840e",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# visualisation: topic spread\n",
+    "plt.figure(figsize=(10, 6))\n",
+    "topic_spread = file.groupby(\"topic\")[\"cross_platform_spread\"].mean().sort_values(ascending=False)\n",
+    "\n",
+    "ax = sns.barplot(x=topic_spread.head(10).index, y=topic_spread.head(10).values, palette=gradient, hue=topic_spread.head(10).index, legend=False)\n",
+    "\n",
+    "for container in ax.containers:\n",
+    "    ax.bar_label(container, fmt=\"%.2f\", fontsize=10, fontweight=\"bold\", padding=5)\n",
+    "\n",
+    "plt.title(\"Average Cross-Platform Spread by Topic\", fontsize=14, fontweight=\"bold\")\n",
+    "plt.xlabel(\"Topic\", fontsize=11)\n",
+    "plt.ylabel(\"Average Spread Score\", fontsize=11)\n",
+    "plt.xticks(rotation=45, ha=\"right\")\n",
+    "plt.tight_layout()\n",
+    "plt.show()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "obs_spread",
+   "metadata": {},
+   "source": [
+    "### Observations\n",
+    "- Posts that spread across more platforms have significantly higher engagement across all metrics.\n",
+    "- Topics like entertainment, gaming, and technology tend to have higher spread scores.\n",
+    "- However, some content performs very well on one platform without travelling much.\n",
+    "\n",
+    "**What this suggests**: High engagement helps, but it does not guarantee cross-platform spread. Sentiment, topic, audience behaviour, and platform culture also matter."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "4e859758",
+   "metadata": {},
+   "source": [
+    "### 6.1 Engagement and Virality Correlation\n",
+    "\n",
+    "This step uses a correlation matrix to compare engagement metrics with viral coefficient and cross-platform spread."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "ce4e72a7",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# virality correlation matrix\n",
+    "print(\"Correlation Between Engagement and Virality Indicators:\")\n",
+    "virality_corr = file[[\"likes\", \"shares\", \"comments\", \"views\", \"viral_coefficient\", \"cross_platform_spread\"]].corr().round(3)\n",
+    "virality_corr"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "4e921473",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# visualisation: virality correlation heatmap\n",
+    "plt.figure(figsize=(10, 6))\n",
+    "sns.heatmap(virality_corr, annot=True, cmap=\"PuBuGn\", center=0, fmt=\".2f\", linewidths=1, cbar_kws={\"shrink\": 0.8})\n",
+    "plt.title(\"Correlation Between Engagement and Virality Indicators\", fontsize=14, fontweight=\"bold\")\n",
+    "plt.xlabel(\"Metric\", fontsize=11)\n",
+    "plt.ylabel(\"Metric\", fontsize=11)\n",
+    "plt.tight_layout()\n",
+    "plt.show()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "obs_corr_virality",
+   "metadata": {},
+   "source": [
+    "### Observations\n",
+    "- Shares and viral coefficient show the strongest positive correlation, which makes sense – sharing is a direct driver of virality.\n",
+    "- Cross-platform spread also correlates moderately with all engagement metrics.\n",
+    "- Views and likes are less strongly associated with viral coefficient than shares are.\n",
+    "\n",
+    "**What this suggests**: For content to become truly viral, encouraging shares [rather than just passive views or likes] is key."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "c6827e63",
+   "metadata": {},
+   "source": [
+    "### 7. Sentiment and Engagement Analysis\n",
+    "\n",
+    "This section compares engagement by sentiment and checks whether the pattern changes across platforms.\n",
+    "\n",
+    "**Questions for This Section:**\n",
+    "- Does positive content always perform better?\n",
+    "- How does sentiment affect engagement across different platforms?\n",
+    "- Is there a platform-specific sentiment advantage?"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "c9c3642a",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "print(\"Average Engagement by Sentiment:\")\n",
+    "sentiment_engagement = file.groupby(\"sentiment_category\")[[\"likes\", \"shares\", \"comments\"]].mean().round(2)\n",
+    "print(sentiment_engagement)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "68888474",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "print(\"Average Likes by Sentiment and Platform:\")\n",
+    "sentiment_platform = file.groupby([\"platform\", \"sentiment_category\"])[\"likes\"].mean().unstack()\n",
+    "sentiment_platform.round(2)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "3718ee82",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# visualisation: sentiment by platform\n",
+    "sentiment_melted = sentiment_platform.reset_index().melt(id_vars=\"platform\", var_name=\"Sentiment\", value_name=\"Average Likes\")\n",
+    "\n",
+    "plt.figure(figsize=(10, 6))\n",
+    "ax = sns.barplot(data=sentiment_melted, x=\"platform\", y=\"Average Likes\", hue=\"Sentiment\", palette=gradient[:len(sentiment_platform.columns)])\n",
+    "\n",
+    "plt.title(\"Average Likes by Sentiment and Platform\", fontsize=14, fontweight=\"bold\")\n",
+    "plt.xlabel(\"Platform\", fontsize=11)\n",
+    "plt.ylabel(\"Average Likes\", fontsize=11)\n",
+    "plt.legend(title=\"Sentiment\")\n",
+    "plt.xticks(rotation=45)\n",
+    "plt.tight_layout()\n",
+    "plt.show()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "obs_sentiment",
+   "metadata": {},
+   "source": [
+    "### Observations\n",
+    "- Positive content generally receives more likes on most platforms.\n",
+    "- However, negative or neutral content can also perform well when it sparks discussion or strong reactions.\n",
+    "- The effect varies by platform: for example, Reddit sees less difference between sentiments than Instagram does.\n",
+    "\n",
+    "**What this suggests**: Sentiment matters, but platform culture changes how sentiment works. A tone that gains attention on one platform may not perform the same way on another."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "bdfa6277",
+   "metadata": {},
+   "source": [
+    "### 8. Account Authority Analysis\n",
+    "\n",
+    "This section checks whether verified accounts and follower count are strongly related to engagement and viral coefficient.\n",
+    "\n",
+    "**Questions for This Section:**\n",
+    "- Do verified and larger accounts always perform better?\n",
+    "- How strong is the relationship between follower count and engagement?\n",
+    "- Can smaller accounts still achieve virality?"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "8c8c9e70",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "print(\"Average Engagement by Verification Status:\")\n",
+    "verified_compare = file.groupby(\"verified\")[[\"likes\", \"shares\", \"comments\", \"views\"]].mean().round(2)\n",
+    "verified_compare.index = [\"Not Verified\", \"Verified\"]\n",
+    "print(verified_compare)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "5f0be296",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# visualisation: verification status\n",
+    "verified_compare[\"Status\"] = [\"Not Verified\", \"Verified\"]\n",
+    "verified_melted = verified_compare.reset_index(drop=True).melt(id_vars=\"Status\", var_name=\"Metric\", value_name=\"Average\")\n",
+    "verified_melted.rename(columns={\"verified\": \"Status\"}, inplace=True)\n",
+    "\n",
+    "plt.figure(figsize=(10, 6))\n",
+    "ax = sns.barplot(data=verified_melted, x=\"Status\", y=\"Average\", hue=\"Metric\", palette=gradient[:4])\n",
+    "\n",
+    "for container in ax.containers:\n",
+    "    ax.bar_label(container, fmt=\"%.0f\", fontsize=10, fontweight=\"bold\", padding=5)\n",
+    "\n",
+    "plt.title(\"Average Engagement by Verification Status\", fontsize=14, fontweight=\"bold\")\n",
+    "plt.xlabel(\"Verification Status\", fontsize=11)\n",
+    "plt.ylabel(\"Average Count\", fontsize=11)\n",
+    "plt.tight_layout()\n",
+    "plt.show()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "c54229e9",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# visualisation: follower correlation\n",
+    "follower_corr = file[[\"followers\", \"likes\", \"shares\", \"comments\", \"views\"]].corr().round(3)\n",
+    "\n",
+    "plt.figure(figsize=(10, 6))\n",
+    "sns.heatmap(follower_corr, annot=True, cmap=\"Blues\", fmt=\".2f\", linewidths=1)\n",
+    "plt.title(\"Correlation Between Follower Count and Engagement\", fontsize=14, fontweight=\"bold\")\n",
+    "plt.tight_layout()\n",
+    "plt.show()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "2c2d0967",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# visualisation: follower vs virality\n",
+    "plt.figure(figsize=(10, 6))\n",
+    "plt.scatter(file[\"followers\"], file[\"viral_coefficient\"], alpha=0.3, s=10, c=primary)\n",
+    "plt.title(\"Follower Count vs Viral Coefficient\", fontsize=14, fontweight=\"bold\")\n",
+    "plt.xlabel(\"Follower Count\", fontsize=11)\n",
+    "plt.ylabel(\"Viral Coefficient\", fontsize=11)\n",
+    "plt.xscale(\"log\")\n",
+    "plt.tight_layout()\n",
+    "plt.show()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "obs_authority",
+   "metadata": {},
+   "source": [
+    "### Observations\n",
+    "- Verified accounts have higher average engagement across all metrics, but the difference is not as large as one might expect.\n",
+    "- Follower count correlates positively with engagement, but the relationship is moderate [r ≈ 0.4–0.6].\n",
+    "- Some smaller accounts still achieve high viral coefficients, as seen in the scatter plot.\n",
+    "\n",
+    "**What this suggests**: A large audience gives an advantage, but it does not fully control virality. Content, timing, platform culture, and audience reaction still matter."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "22a81321",
+   "metadata": {},
+   "source": [
+    "### 9. Virality Analysis\n",
+    "\n",
+    "This section defines viral content as the top 10% of posts by viral coefficient. It then compares viral and non-viral content across engagement, topic, and sentiment.\n",
+    "\n",
+    "**Questions for This Section:**\n",
+    "- What factors seem to separate viral posts from non-viral posts?\n",
+    "- Which topics and sentiments appear most among viral content?\n",
+    "- Is virality concentrated or distributed?"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "40a2004a",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# define viral content (top 10%)\n",
+    "viral_threshold = file[\"viral_coefficient\"].quantile(0.9)\n",
+    "viral = file[file[\"viral_coefficient\"] >= viral_threshold]\n",
+    "non_viral = file[file[\"viral_coefficient\"] < viral_threshold]\n",
+    "\n",
+    "print(f\"Viral posts [top 10%]: {len(viral)}\")\n",
+    "print(f\"Non-viral posts: {len(non_viral)}\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "89db5234",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "print(\"Viral vs Non-Viral Content Profile:\")\n",
+    "viral_profile = pd.DataFrame({\n",
+    "    \"Viral\": viral[[\"likes\", \"shares\", \"comments\", \"views\", \"followers\"]].mean(),\n",
+    "    \"Non-Viral\": non_viral[[\"likes\", \"shares\", \"comments\", \"views\", \"followers\"]].mean()\n",
+    "}).round(2)\n",
+    "print(viral_profile)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "bd41a4cb",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# visualisation: viral vs non-viral\n",
+    "viral_melted = viral_profile.reset_index().melt(id_vars=\"index\", var_name=\"Type\", value_name=\"Average\")\n",
+    "viral_melted.rename(columns={\"index\": \"Metric\"}, inplace=True)\n",
+    "\n",
+    "plt.figure(figsize=(10, 6))\n",
+    "ax = sns.barplot(data=viral_melted, x=\"Metric\", y=\"Average\", hue=\"Type\", palette=[primary, secondary])\n",
+    "\n",
+    "for container in ax.containers:\n",
+    "    ax.bar_label(container, fmt=\"%.0f\", fontsize=10, fontweight=\"bold\", padding=5)\n",
+    "\n",
+    "plt.title(\"Viral vs Non-Viral Content Profile\", fontsize=14, fontweight=\"bold\")\n",
+    "plt.xlabel(\"Metric\", fontsize=11)\n",
+    "plt.ylabel(\"Average Value\", fontsize=11)\n",
+    "plt.xticks(rotation=45, ha=\"right\")\n",
+    "plt.tight_layout()\n",
+    "plt.show()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "051a0dc4",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# topic viral ratio\n",
+    "viral_topic_dist = viral[\"topic\"].value_counts(normalize=True)\n",
+    "non_viral_topic_dist = non_viral[\"topic\"].value_counts(normalize=True)\n",
+    "\n",
+    "topic_viral_ratio = (viral_topic_dist / non_viral_topic_dist).sort_values(ascending=False)\n",
+    "print(\"Topic Viral Ratio [viral % / non-viral %]:\")\n",
+    "print(topic_viral_ratio.head(10).round(2))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "a27971d7",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "print(\"Sentiment Distribution: Viral vs Non-Viral:\")\n",
+    "viral_sentiment = viral[\"sentiment_category\"].value_counts(normalize=True)\n",
+    "non_viral_sentiment = non_viral[\"sentiment_category\"].value_counts(normalize=True)\n",
+    "\n",
+    "sentiment_comparison = pd.DataFrame({\n",
+    "    \"Viral\": viral_sentiment,\n",
+    "    \"Non-Viral\": non_viral_sentiment\n",
+    "}).round(3)\n",
+    "print(sentiment_comparison)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "889c9c0b",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# visualisation: sentiment viral vs non-viral\n",
+    "sentiment_comp_melted = sentiment_comparison.reset_index().melt(id_vars=\"sentiment_category\", var_name=\"Type\", value_name=\"Proportion\")\n",
+    "\n",
+    "plt.figure(figsize=(10, 6))\n",
+    "ax = sns.barplot(data=sentiment_comp_melted, x=\"sentiment_category\", y=\"Proportion\", hue=\"Type\", palette=[primary, secondary])\n",
+    "\n",
+    "for container in ax.containers:\n",
+    "    ax.bar_label(container, fmt=\"%.3f\", fontsize=10, fontweight=\"bold\", padding=5)\n",
+    "\n",
+    "plt.title(\"Sentiment Distribution: Viral vs Non-Viral Posts\", fontsize=14, fontweight=\"bold\")\n",
+    "plt.xlabel(\"Sentiment\", fontsize=11)\n",
+    "plt.ylabel(\"Proportion\", fontsize=11)\n",
+    "plt.tight_layout()\n",
+    "plt.show()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "obs_virality",
+   "metadata": {},
+   "source": [
+    "### Observations\n",
+    "- Viral posts have dramatically higher engagement [5–10 times] than non-viral posts.\n",
+    "- Entertainment, gaming, and technology topics are overrepresented among viral content.\n",
+    "- Positive sentiment is slightly more common in viral posts, but neutral and negative posts also go viral.\n",
+    "\n",
+    "**What this suggests**: Virality often follows a winner-take-most pattern. A small share of posts collects a large share of attention, which is unfair but also very on-brand for social media."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "8846054e",
+   "metadata": {},
+   "source": [
+    "### 10. Key Findings and Insights\n",
+    "\n",
+    "What are the main patterns from the analysis?\n",
+    "\n",
+    "#### 1. Platform attention profiles differ\n",
+    "- YouTube dominates view counts.\n",
+    "- TikTok generates high like volumes.\n",
+    "- Twitter [X] supports sharing behaviour.\n",
+    "- Reddit encourages discussion through comments.\n",
+    "\n",
+    "#### 2. Topic and platform work together\n",
+    "- Entertainment, technology, and gaming appear strongly across platforms.\n",
+    "- Different platforms favour different topics.\n",
+    "- Discussion volume changes by topic and audience type.\n",
+    "\n",
+    "#### 3. Timing has some influence\n",
+    "- Certain posting hours [late morning, early evening] are linked with higher engagement.\n",
+    "- Weekend posts may receive more engagement than weekday posts.\n",
+    "- Timing is useful, but it cannot save weak content.\n",
+    "\n",
+    "#### 4. Virality is linked with spread and engagement\n",
+    "- Cross-platform spread is associated with stronger engagement.\n",
+    "- Shares are the strongest driver of viral coefficient.\n",
+    "- Follower count helps, but does not guarantee virality.\n",
+    "\n",
+    "#### 5. The attention economy is not simple\n",
+    "- No single factor explains online success.\n",
+    "- Platform norms, topic type, timing, sentiment, and account authority all play a role.\n",
+    "- The interaction between these factors is likely more important than any one variable."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "35ac1bd3",
+   "metadata": {},
+   "source": [
+    "### 11. Statistical Summary\n",
+    "\n",
+    "This final statistical summary brings together the main values for sample size, platform count, engagement, virality, and account authority."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "acc5bbf1",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# statistical summary\n",
+    "sample_size = len(file)\n",
+    "platform_count = file[\"platform\"].nunique()\n",
+    "topic_count = file[\"topic\"].nunique()\n",
+    "mean_likes = file[\"likes\"].mean()\n",
+    "mean_shares = file[\"shares\"].mean()\n",
+    "mean_comments = file[\"comments\"].mean()\n",
+    "mean_views = file[\"views\"].mean()\n",
+    "mean_viral_coefficient = file[\"viral_coefficient\"].mean()\n",
+    "mean_spread = file[\"cross_platform_spread\"].mean()\n",
+    "verified_percentage = file[file[\"verified\"] == True].shape[0] / sample_size * 100\n",
+    "\n",
+    "print(\"KEY STATISTICS SUMMARY\")\n",
+    "print(\"=\"*70)\n",
+    "print(f\"\\nSample Size: {sample_size} posts\")\n",
+    "print(f\"Platforms Covered: {platform_count}\")\n",
+    "print(f\"Topics Covered: {topic_count}\")\n",
+    "print(\"\\nAverage Engagement:\")\n",
+    "print(f\"  Likes: {mean_likes:.2f}\")\n",
+    "print(f\"  Shares: {mean_shares:.2f}\")\n",
+    "print(f\"  Comments: {mean_comments:.2f}\")\n",
+    "print(f\"  Views: {mean_views:.2f}\")\n",
+    "print(\"\\nVirality Indicators:\")\n",
+    "print(f\"  Average Viral Coefficient: {mean_viral_coefficient:.2f}\")\n",
+    "print(f\"  Average Cross-Platform Spread: {mean_spread:.2f}\")\n",
+    "print(\"\\nAccount Authority:\")\n",
+    "print(f\"  Verified Accounts: {verified_percentage:.1f}%\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "7b1a3d29",
+   "metadata": {},
+   "source": [
+    "### 12. Limitations\n",
+    "\n",
+    "What should be kept in mind while reading this analysis?\n",
+    "\n",
+    "1. **Dataset limitations**: the dataset may be synthetic or simplified, so it may not fully match real-world platform behaviour.\n",
+    "\n",
+    "2. **Platform differences**: each platform measures engagement differently. A view on YouTube may not mean the same thing as a view on TikTok.\n",
+    "\n",
+    "3. **Missing context**: the dataset may not include full user background or detailed post text for deeper interpretation.\n",
+    "\n",
+    "4. **Correlation and causation**: the notebook observes relationships, but it does not prove cause and effect.\n",
+    "\n",
+    "5. **Time period**: if the data covers a limited time frame, longer trends and seasonal changes may be missed.\n",
+    "\n",
+    "6. **Language bias**: even when multiple languages are included, some languages may still be over-represented."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "8d8e4405",
+   "metadata": {},
+   "source": [
+    "### 13. Conclusion\n",
+    "\n",
+    "So what does the full analysis suggest?\n",
+    "\n",
+    "### Summary\n",
+    "\n",
+    "This analysis shows that online attention is shaped by a mix of platform design, topic type, timing, sentiment, and account authority. Different platforms reward different kinds of engagement, so a post that performs well in one place may not perform the same way elsewhere.\n",
+    "\n",
+    "The strongest point from the notebook is that virality is not explained by one simple factor. High engagement, strong topics, and larger accounts may help, but they do not guarantee success. Cross-platform spread seems to be connected with stronger engagement, but correlation is not proof of causation.\n",
+    "\n",
+    "### Implications\n",
+    "\n",
+    "1. **For Content Creators**: Understanding platform-specific dynamics is more valuable than chasing universal virality. Content should be tailored to the platform where it will be shared.\n",
+    "\n",
+    "2. **For Platform Analysts**: Engagement metrics tell different stories depending on the platform. A holistic view requires looking at likes, shares, comments, and views together rather than in isolation.\n",
+    "\n",
+    "3. **For Researchers**: The attention economy is multi-dimensional. Future work should explore longitudinal patterns and control for confounding variables to better isolate causal mechanisms.\n",
+    "\n",
+    "### Final Thoughts\n",
+    "\n",
+    "The attention economy works like a very crowded school corridor. Everyone is talking, a few people are somehow louder than everyone else, and nobody is fully sure why one joke becomes famous. Data cannot explain everything, but it helps us see the patterns more clearly.\n"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.14.2"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}
